@@ -45,7 +45,10 @@ async def main() -> None:
     # 4. Routers
     dp.include_router(main_router)
 
-    # 5. Start Polling
+    # 5. Clear any old active webhook
+    await bot.delete_webhook(drop_pending_updates=True)
+
+    # 6. Start Polling
     me = await bot.get_me()
     log.info("Bot started successfully as @%s (ID: %s)", me.username, me.id)
     print(f"\n🚀 ربات با موفقیت روی اکانت @{me.username} روشن شد و آماده دریافت سفارش است!\n")
