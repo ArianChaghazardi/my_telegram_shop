@@ -4,14 +4,14 @@
 from aiogram.types import ReplyKeyboardMarkup
 from bot.keyboards.common import kbtn, rkb, STYLE_SUCCESS, STYLE_PRIMARY, STYLE_DANGER
 
-# Kashida / tatweel labels matching the polished user aesthetic
-LBL_BUY_PRODUCT = "خرید محصول"
-LBL_TOPUP = "افزایش موجودی"
-LBL_ACCOUNT = "حساب کاربری"
-LBL_REFERRAL = "زیرمجموعه گیری"
-LBL_SUPPORT = "پشتیبانی"
-LBL_TRACKING = "پیگیری سفارش"
-LBL_TRUST = "اعتماد به ما"
+# Standard labels with relevant icons and zero ZWNJ / zero tatweel
+LBL_BUY_PRODUCT = "🛍 خرید محصول"
+LBL_TOPUP       = "💳 افزایش موجودی"
+LBL_ACCOUNT     = "👤 حساب کاربری"
+LBL_REFERRAL    = "👥 زیرمجموعه گیری"
+LBL_SUPPORT     = "🎧 پشتیبانی"
+LBL_TRACKING    = "🔎 پیگیری سفارش"
+LBL_TRUST       = "🛡 اعتماد به ما"
 
 MAIN_BUTTONS = {
     LBL_BUY_PRODUCT,
