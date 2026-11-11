@@ -19,7 +19,7 @@ def products_menu_kb() -> InlineKeyboardMarkup:
             btn("🎁 خرید گیفت تلگرام", callback_data="shop:gifts", style=STYLE_PRIMARY),
         ],
         [
-            btn("❤️ خرید ری‌اکشن تلگرام", callback_data="shop:reactions", style=STYLE_PRIMARY),
+            btn("❤️ خرید ری اکشن تلگرام", callback_data="shop:reactions", style=STYLE_PRIMARY),
             btn("🚀 خرید بوست کانال", callback_data="shop:boost", style=STYLE_PRIMARY),
         ],
         [
@@ -56,7 +56,7 @@ def premium_menu_kb() -> InlineKeyboardMarkup:
     return ikb([
         [btn("💎 پرمیوم ۳ ماهه", callback_data="prem:3", style=STYLE_SUCCESS)],
         [btn("💎 پرمیوم ۶ ماهه", callback_data="prem:6", style=STYLE_SUCCESS)],
-        [btn("💎 پرمیوم ۱۲ ماهه (یک‌ساله)", callback_data="prem:12", style=STYLE_SUCCESS)],
+        [btn("💎 پرمیوم ۱۲ ماهه (یک ساله)", callback_data="prem:12", style=STYLE_SUCCESS)],
         [btn("🔙 بازگشت", callback_data="shop:main", style=STYLE_DANGER)],
     ])
 
@@ -111,5 +111,5 @@ def invoice_kb(
         rows.append([btn("🎟 اعمال کد تخفیف", callback_data=f"pay:discount:{order_code}", style=STYLE_PRIMARY)])
 
     rows.append([btn("💳 پرداخت آنلاین درگاه (بانکی)", callback_data=f"pay:online:{order_code}", style=STYLE_PRIMARY)])
-    rows.append([btn("❌ لغو پیش‌فاکتور", callback_data=f"order:cancel:{order_code}", style=STYLE_DANGER)])
+    rows.append([btn("❌ لغو پیش فاکتور", callback_data=f"order:cancel:{order_code}", style=STYLE_DANGER)])
     return ikb(rows)

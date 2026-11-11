@@ -11,9 +11,9 @@ from aiogram.types import (
 )
 from config import CUSTOM_EMOJI_IDS
 
-STYLE_SUCCESS = "success"  # Green
-STYLE_PRIMARY = "primary"  # Blue / Teal
-STYLE_DANGER = "danger"    # Red / Warm Brown
+STYLE_SUCCESS = "success" # Green
+STYLE_PRIMARY = "primary" # Blue / Teal
+STYLE_DANGER = "danger" # Red / Warm Brown
 
 _INLINE_SUPPORTS_STYLE = "style" in inspect.signature(InlineKeyboardButton.__init__).parameters
 _INLINE_SUPPORTS_CUSTOM_EMOJI = "icon_custom_emoji_id" in inspect.signature(InlineKeyboardButton.__init__).parameters

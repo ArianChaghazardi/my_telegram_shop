@@ -36,7 +36,7 @@ async def menu_account(message: Message) -> None:
             f"🔹 <code>{o['code']}</code> | {o['title']} | <b>{o['status']}</b>" for o in orders
         )
     else:
-        orders_text = "هنوز سفارشی ثبت نکرده‌اید."
+        orders_text = "هنوز سفارشی ثبت نکرده اید."
 
     text = (
         "👤 <b>پروفایل و حساب کاربری:</b>\n"
@@ -47,12 +47,12 @@ async def menu_account(message: Message) -> None:
         f"🎁 موجودی تخفیف: <b>{user['discount_balance']:,} تومان</b>\n"
         f"⭐️ امتیاز باشگاه: <b>{user['points']:,} امتیاز</b>\n"
         "────────────────────\n"
-        "📦 <b>آخرین سفارش‌های شما:</b>\n"
+        "📦 <b>آخرین سفارش های شما:</b>\n"
         f"{orders_text}"
     )
 
     markup = ikb([
-        [btn("🎲 چالش‌های روزانه و جوایز", callback_data="games:menu", style=STYLE_SUCCESS)],
+        [btn("🎲 چالش های روزانه و جوایز", callback_data="games:menu", style=STYLE_SUCCESS)],
         [btn("🔎 پیگیری سفارش با کد", callback_data="track:start", style=STYLE_PRIMARY)],
     ])
     await message.answer(text, reply_markup=markup)
@@ -73,12 +73,12 @@ async def menu_referral(message: Message, bot: Bot) -> None:
     total_earned = user["total_ref_earned"]
 
     text = (
-        "👥 <b>سیستم کسب درآمد و زیرمجموعه‌گیری:</b>\n\n"
-        f"با دعوت دوستانتان به ربات، <b>{settings.DEFAULT_REFERRAL_PERCENT}٪</b> از مبلغ هر خرید آن‌ها به عنوان پاداش به حساب شما واریز می‌شود!\n\n"
+        "👥 <b>سیستم کسب درآمد و زیرمجموعه گیری:</b>\n\n"
+        f"با دعوت دوستانتان به ربات، <b>{settings.DEFAULT_REFERRAL_PERCENT}٪</b> از مبلغ هر خرید آن ها به عنوان پاداش به حساب شما واریز می شود!\n\n"
         f"🔗 <b>لینک اختصاصی دعوت شما:</b>\n<code>{ref_link}</code>\n\n"
-        f"👤 تعداد دعوت‌ها: <b>{ref_count} نفر</b>\n"
+        f"👤 تعداد دعوت ها: <b>{ref_count} نفر</b>\n"
         f"💰 درآمد قابل برداشت: <b>{ref_earnings:,} تومان</b>\n"
-        f"📊 کل سود کسب‌شده: <b>{total_earned:,} تومان</b>\n\n"
+        f"📊 کل سود کسب شده: <b>{total_earned:,} تومان</b>\n\n"
         "حداقل مبلغ درخواست تسویه: ۱۰۰,۰۰۰ تومان"
     )
 
@@ -130,7 +130,7 @@ async def tracking_check(message: Message, state: FSMContext) -> None:
 
     status_map = {
         "pending": "⏳ در انتظار پرداخت",
-        "paid": "🚀 پرداخت‌شده (در صف تحویل خودکار)",
+        "paid": "🚀 پرداخت شده (در صف تحویل خودکار)",
         "delivered": "✅ تحویل داده شد",
         "cancelled": "❌ لغو شده",
         "refunded": "↩️ بازگشت وجه به کیف پول",

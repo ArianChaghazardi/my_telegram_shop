@@ -89,7 +89,7 @@ class FulfillmentService:
 
         except Exception as e:
             log.exception("Delivery failure for order %s: %s", order_code, e)
-            return False, f"خطای پیش‌بینی نشده: {e}"
+            return False, f"خطای پیش بینی نشده: {e}"
 
     @classmethod
     async def _deliver_stars(cls, order: Dict[str, Any]) -> Tuple[bool, str]:
@@ -97,7 +97,7 @@ class FulfillmentService:
         # PLUG-IN: Connect Fragment API / Telethon / Supplier Endpoint here
         # Example:
         # async with aiohttp.ClientSession() as session:
-        #     resp = await session.post("https://api.supplier.com/stars", json={...})
+        # resp = await session.post("https://api.supplier.com/stars", json={...})
         # ===================================================================
         log.info("Fulfillment (Stars): %s stars to %s", order["qty"], order["recipient"])
         return True, "استارز با موفقیت ارسال شد."

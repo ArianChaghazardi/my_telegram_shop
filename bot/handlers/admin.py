@@ -34,10 +34,10 @@ def admin_dashboard_kb() -> any:
     return ikb([
         [
             btn("📊 آمار و گزارشات", callback_data="adm:stats", style=STYLE_PRIMARY),
-            btn("📦 سفارش‌های منتظر تحویل", callback_data="adm:pending", style=STYLE_SUCCESS),
+            btn("📦 سفارش های منتظر تحویل", callback_data="adm:pending", style=STYLE_SUCCESS),
         ],
         [
-            btn("⚙️ تنظیم نرخ‌ها و قیمت‌ها", callback_data="adm:prices", style=STYLE_PRIMARY),
+            btn("⚙️ تنظیم نرخ ها و قیمت ها", callback_data="adm:prices", style=STYLE_PRIMARY),
             btn("🎟 مدیریت کدهای تخفیف", callback_data="adm:discounts", style=STYLE_PRIMARY),
         ],
         [
@@ -77,9 +77,9 @@ async def adm_stats(call: CallbackQuery) -> None:
     stats = await db.get_stats()
     text = (
         "📊 <b>گزارش آمار کلی ربات:</b>\n\n"
-        f"👥 کل کاربران ثبت‌شده: <b>{stats['users_count']:,} نفر</b>\n"
-        f"📦 کل سفارش‌های ثبت‌شده: <b>{stats['orders_count']:,} عدد</b>\n"
-        f"⏳ سفارش‌های نیازمند تحویل: <b>{stats['pending_delivery']:,} عدد</b>\n"
+        f"👥 کل کاربران ثبت شده: <b>{stats['users_count']:,} نفر</b>\n"
+        f"📦 کل سفارش های ثبت شده: <b>{stats['orders_count']:,} عدد</b>\n"
+        f"⏳ سفارش های نیازمند تحویل: <b>{stats['pending_delivery']:,} عدد</b>\n"
         f"💰 مجموع فروش موفق: <b>{stats['total_sales']:,} تومان</b>"
     )
     await call.message.edit_text(text, reply_markup=ikb([[btn("🔙 بازگشت", callback_data="adm:dashboard")]]))
@@ -102,7 +102,7 @@ async def adm_pending_orders(call: CallbackQuery) -> None:
 
     if not rows:
         await call.message.edit_text(
-            "✅ در حال حاضر هیچ سفارش پرداخت‌شده‌ای در انتظار تحویل نیست.",
+            "✅ در حال حاضر هیچ سفارش پرداخت شده ای در انتظار تحویل نیست.",
             reply_markup=ikb([[btn("🔙 بازگشت", callback_data="adm:dashboard")]])
         )
         return
@@ -210,7 +210,7 @@ async def adm_adjust_amount_input(message: Message, state: FSMContext) -> None:
     if ok:
         await message.answer(f"✅ با موفقیت موجودی کاربر {uid} به میزان {amount:,} تومان تغییر کرد.")
     else:
-        await message.answer("❌ خطا در ویرایش موجودی (احتمالاً موجودی منفی می‌شد).")
+        await message.answer("❌ خطا در ویرایش موجودی (احتمالاً موجودی منفی می شد).")
 
 
 # ---------------------------------------------------------------------------

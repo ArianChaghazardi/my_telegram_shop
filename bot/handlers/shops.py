@@ -39,7 +39,7 @@ class ShopFlow(StatesGroup):
 async def shop_main(call: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await call.message.edit_text(
-        "🛍 <b>فهرست محصولات و خدمات تلگرام:</b>\n\nلطفاً دسته‌بندی را انتخاب کنید:",
+        "🛍 <b>فهرست محصولات و خدمات تلگرام:</b>\n\nلطفاً دسته بندی را انتخاب کنید:",
         reply_markup=products_menu_kb()
     )
 
@@ -57,7 +57,7 @@ async def shop_stars(call: CallbackQuery, state: FSMContext) -> None:
         f"💵 نرخ هر استارز: <b>{int(float(rate)):,} تومان</b>\n"
         "حداقل سفارش: ۵۰ عدد\n"
         "⚡️ تحویل کاملاً خودکار و فوری بدون نیاز به لاگین\n\n"
-        "لطفاً یکی از بسته‌ها را انتخاب کنید یا تعداد دلخواه را وارد نمایید 👇",
+        "لطفاً یکی از بسته ها را انتخاب کنید یا تعداد دلخواه را وارد نمایید 👇",
         reply_markup=stars_menu_kb()
     )
 
@@ -78,7 +78,7 @@ async def stars_pack_pick(call: CallbackQuery, state: FSMContext) -> None:
         f"⭐ سفارش: <b>{qty} استارز تلگرام</b>\n"
         f"💵 مبلغ: <b>{price:,} تومان</b>\n\n"
         "👤 <b>استارزها به چه حسابی ارسال شوند؟</b>\n"
-        "می‌توانید دکمه «برای خودم» را بزنید یا <b>آیدی عددی / یوزرنیم</b> گیرنده را ارسال کنید:",
+        "می توانید دکمه «برای خودم» را بزنید یا <b>آیدی عددی / یوزرنیم</b> گیرنده را ارسال کنید:",
         reply_markup=recipient_kb(call.from_user.first_name)
     )
 
@@ -96,7 +96,7 @@ async def stars_custom_prompt(call: CallbackQuery, state: FSMContext) -> None:
 async def stars_custom_input(message: Message, state: FSMContext) -> None:
     text = (message.text or "").strip().replace(",", "")
     if not text.isdigit() or int(text) < 50:
-        await message.answer("❌ تعداد نامعتبر است! حداقل تعداد خرید ۵۰ استارز می‌باشد. دوباره ارسال کنید:")
+        await message.answer("❌ تعداد نامعتبر است! حداقل تعداد خرید ۵۰ استارز می باشد. دوباره ارسال کنید:")
         return
 
     qty = int(text)
@@ -133,7 +133,7 @@ async def stars_calc_balance(call: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(kind="stars", qty=possible_stars, price=price, title=f"خرید {possible_stars} استارز با موجودی")
     await state.set_state(ShopFlow.stars_recipient)
     await call.message.edit_text(
-        f"🧮 بر اساس موجودی شما ({balance:,} تومان)، می‌توانید <b>{possible_stars} استارز</b> خریداری کنید.\n"
+        f"🧮 بر اساس موجودی شما ({balance:,} تومان)، می توانید <b>{possible_stars} استارز</b> خریداری کنید.\n"
         f"💵 مبلغ: <b>{price:,} تومان</b>\n\n"
         "گیرنده استارز چه کسی باشد؟",
         reply_markup=recipient_kb(call.from_user.first_name)
@@ -186,7 +186,7 @@ async def create_and_display_invoice(message_or_target: any, user_id: int, data:
     user_balance = user["balance"] if user else 0
 
     text = (
-        "🧾 <b>پیش‌فاکتور سفارش:</b>\n"
+        "🧾 <b>پیش فاکتور سفارش:</b>\n"
         "────────────────────\n"
         f"📦 محصول: <b>{title}</b>\n"
         f"👤 گیرنده: <code>{recipient}</code>\n"
@@ -194,8 +194,8 @@ async def create_and_display_invoice(message_or_target: any, user_id: int, data:
         f"💵 مبلغ کل: <b>{gross_price:,} تومان</b>\n"
         f"👛 موجودی کیف پول شما: <b>{user_balance:,} تومان</b>\n"
         "────────────────────\n"
-        "⏳ <i>اعتبار پیش‌فاکتور: ۱۵ دقیقه</i>\n\n"
-        "برای نهایی کردن سفارش، یکی از گزینه‌های زیر را انتخاب کنید:"
+        "⏳ <i>اعتبار پیش فاکتور: ۱۵ دقیقه</i>\n\n"
+        "برای نهایی کردن سفارش، یکی از گزینه های زیر را انتخاب کنید:"
     )
 
     markup = invoice_kb(order_code, user_balance, gross_price, has_discount_code=False)
@@ -220,8 +220,8 @@ async def shop_premium(call: CallbackQuery, state: FSMContext) -> None:
         "💎 <b>خرید اشتراک تلگرام پرمیوم (Telegram Premium)</b>\n\n"
         f"🔹 ۳ ماهه: <b>{p3:,} تومان</b>\n"
         f"🔹 ۶ ماهه: <b>{p6:,} تومان</b>\n"
-        f"🔹 ۱۲ ماهه (یک‌ساله): <b>{p12:,} تومان</b>\n\n"
-        "✅ فعال‌سازی رسمی بدون لاگین روی اکانت (فقط با یوزرنیم)\n"
+        f"🔹 ۱۲ ماهه (یک ساله): <b>{p12:,} تومان</b>\n\n"
+        "✅ فعال سازی رسمی بدون لاگین روی اکانت (فقط با یوزرنیم)\n"
         "مدت زمان اشتراک مورد نظر را انتخاب کنید:",
         reply_markup=premium_menu_kb()
     )
@@ -250,7 +250,7 @@ async def premium_pick(call: CallbackQuery, state: FSMContext) -> None:
 async def shop_gifts(call: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await call.message.edit_text(
-        "🎁 <b>خرید و ارسال گیفت‌های تلگرام (Telegram Gifts)</b>\n\n"
+        "🎁 <b>خرید و ارسال گیفت های تلگرام (Telegram Gifts)</b>\n\n"
         "گیفت مورد نظر خود را از لیست زیر انتخاب کنید 👇",
         reply_markup=gifts_grid_kb()
     )
@@ -289,7 +289,7 @@ async def shop_reactions(call: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await state.set_state(ShopFlow.reaction_link)
     await call.message.edit_text(
-        "❤️ <b>خرید ری‌اکشن تلگرام (تلگرام استارز ری‌اکشن)</b>\n\n"
+        "❤️ <b>خرید ری اکشن تلگرام (تلگرام استارز ری اکشن)</b>\n\n"
         "🔗 لطفاً لینک پست عمومی کانال را ارسال کنید:\n"
         "📌 مثال: <code>https://t.me/channel/123</code>"
     )
@@ -304,7 +304,7 @@ async def reaction_link_input(message: Message, state: FSMContext) -> None:
     await state.update_data(post_link=link)
     await state.set_state(ShopFlow.reaction_qty)
     await message.answer(
-        "🔢 لطفاً تعداد ری‌اکشن مورد نظر را وارد کنید (حداقل ۱۰ عدد):"
+        "🔢 لطفاً تعداد ری اکشن مورد نظر را وارد کنید (حداقل ۱۰ عدد):"
     )
 
 
@@ -312,7 +312,7 @@ async def reaction_link_input(message: Message, state: FSMContext) -> None:
 async def reaction_qty_input(message: Message, state: FSMContext) -> None:
     text = (message.text or "").strip()
     if not text.isdigit() or int(text) < 10:
-        await message.answer("❌ حداقل سفارش ری‌اکشن ۱۰ عدد می‌باشد.")
+        await message.answer("❌ حداقل سفارش ری اکشن ۱۰ عدد می باشد.")
         return
     qty = int(text)
     rate_10 = int(float(await db.get_setting("reaction_price_per_10", "4500")))
@@ -325,7 +325,7 @@ async def reaction_qty_input(message: Message, state: FSMContext) -> None:
         "kind": "reaction",
         "qty": qty,
         "price": price,
-        "title": f"❤️ ری‌اکشن تلگرام ({qty} عدد)",
+        "title": f"❤️ ری اکشن تلگرام ({qty} عدد)",
         "extra": f"link={link}"
     }
     await create_and_display_invoice(message, message.from_user.id, data_payload, recipient=link)
@@ -343,7 +343,7 @@ async def shop_boost(call: CallbackQuery) -> None:
 async def shop_crypto(call: CallbackQuery) -> None:
     ton_price = int(float(await db.get_setting("ton_personal_price", "330000")))
     await call.message.edit_text(
-        "🪙 <b>خرید ارز دیجیتال تون‌کوین (TON)</b>\n\n"
+        "🪙 <b>خرید ارز دیجیتال تون کوین (TON)</b>\n\n"
         f"💵 نرخ هر واحد تون: <b>{ton_price:,} تومان</b>\n\n"
         "⚡️ واریز مستقیم به آدرس ولت شما (حداقل ۱ TON)\n"
         "برای ثبت سفارش به پشتیبانی پیام دهید یا از کیف پول استفاده کنید.",

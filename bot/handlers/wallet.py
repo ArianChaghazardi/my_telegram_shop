@@ -45,7 +45,7 @@ async def show_wallet_overview(event: Message | CallbackQuery) -> None:
         f"💵 موجودی اصلی: <b>{balance:,} تومان</b>\n"
         f"🎁 موجودی تخفیف هدیه: <b>{discount_bal:,} تومان</b>\n"
         f"⭐️ امتیاز باشگاه مشتریان: <b>{points:,} امتیاز</b>\n\n"
-        "جهت افزایش موجودی کیف پول، یکی از روش‌های زیر را انتخاب نمایید 👇"
+        "جهت افزایش موجودی کیف پول، یکی از روش های زیر را انتخاب نمایید 👇"
     )
 
     if isinstance(event, CallbackQuery):
@@ -59,8 +59,8 @@ async def show_wallet_overview(event: Message | CallbackQuery) -> None:
 async def topup_rial(call: CallbackQuery, state: FSMContext) -> None:
     await call.message.edit_text(
         "💳 <b>افزایش موجودی ریالی (درگاه آنلاین):</b>\n\n"
-        "درگاه پرداخت آنلاین شتابی در حال حاضر در حال به‌روزرسانی سیستم شاپرک می‌باشد.\n"
-        "می‌توانید موجودی خود را از طریق ارز دیجیتال شارژ فرمایید یا به پشتیبانی پیام دهید.",
+        "درگاه پرداخت آنلاین شتابی در حال حاضر در حال به روزرسانی سیستم شاپرک می باشد.\n"
+        "می توانید موجودی خود را از طریق ارز دیجیتال شارژ فرمایید یا به پشتیبانی پیام دهید.",
         reply_markup=ikb([[btn("🔙 بازگشت", callback_data="topup:start", style=STYLE_DANGER)]])
     )
 
@@ -113,7 +113,7 @@ async def topup_crypto_hash_received(message: Message, state: FSMContext, bot: B
                     "🔔 <b>اعلام واریز کریپتو:</b>\n"
                     f"👤 کاربر: {message.from_user.id} (@{message.from_user.username})\n"
                     f"🔗 هش: <code>{tx_hash}</code>\n"
-                    "از پنل مدیریت می‌توانید موجودی را شارژ کنید."
+                    "از پنل مدیریت می توانید موجودی را شارژ کنید."
                 )
             )
         except Exception:

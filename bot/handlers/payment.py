@@ -92,12 +92,12 @@ async def process_discount_code(message: Message, state: FSMContext) -> None:
 
     await message.answer(
         f"{result_msg}\n\n"
-        "🧾 <b>پیش‌فاکتور با تخفیف به‌روزرسانی شد:</b>\n"
+        "🧾 <b>پیش فاکتور با تخفیف به روزرسانی شد:</b>\n"
         "────────────────────\n"
         f"📦 محصول: <b>{order['title']}</b>\n"
         f"👤 گیرنده: <code>{order['recipient']}</code>\n"
         f"🔖 کد سفارش: <code>{order_code}</code>\n"
-        f"🏷 کد اعمال‌شده: <code>{code_str}</code>\n"
+        f"🏷 کد اعمال شده: <code>{code_str}</code>\n"
         f"💵 مبلغ قابل پرداخت جدید: <b>{new_price:,} تومان</b>\n"
         f"👛 موجودی کیف پول: <b>{user_balance:,} تومان</b>\n"
         "────────────────────",
@@ -142,4 +142,4 @@ async def cancel_order(call: CallbackQuery, state: FSMContext) -> None:
         finally:
             await conn.close()
 
-    await call.message.edit_text("❌ پیش‌فاکتور با موفقیت لغو شد.")
+    await call.message.edit_text("❌ پیش فاکتور با موفقیت لغو شد.")

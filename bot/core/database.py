@@ -272,10 +272,10 @@ class Database:
                 return False, "⚠️ این سفارش قبلاً پرداخت یا تعیین تکلیف شده است.", None
 
             # 2. Check 15-minute expiration
-            if time.time() - order["created_at"] > 900:  # 15 minutes
+            if time.time() - order["created_at"] > 900: # 15 minutes
                 await conn.execute("UPDATE orders SET status = 'expired' WHERE id = ?", (order["id"],))
                 await conn.commit()
-                return False, "⏰ مهلت پرداخت این پیش‌فاکتور (۱۵ دقیقه) منقضی شده است. لطفاً سفارش جدید ثبت کنید.", None
+                return False, "⏰ مهلت پرداخت این پیش فاکتور (۱۵ دقیقه) منقضی شده است. لطفاً سفارش جدید ثبت کنید.", None
 
             # 3. Fetch user balance
             u_cur = await conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
@@ -381,7 +381,7 @@ class Database:
             )
             if await r_cur.fetchone():
                 await conn.rollback()
-                return False, "⚠️ شما قبلاً از این کد تخفیف استفاده کرده‌اید.", 0
+                return False, "⚠️ شما قبلاً از این کد تخفیف استفاده کرده اید.", 0
 
             # 4. Calculate discount from GROSS price (prevents price compounding)
             percent = discount["percent"]

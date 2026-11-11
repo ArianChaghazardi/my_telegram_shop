@@ -21,9 +21,9 @@ def games_menu_kb() -> any:
 @router.callback_query(F.data == "games:menu")
 async def show_games_menu(call: CallbackQuery) -> None:
     await call.message.edit_text(
-        "🎮 <b>چالش‌های روزانه و دریافت تخفیف رایگان:</b>\n\n"
-        "هر روز می‌توانید شانس خود را امتحان کنید و به ازای امتیاز خود، <b>موجودی تخفیف رایگان</b> هدیه بگیرید که در خریدهایتان کسر می‌شود!\n\n"
-        "یکی از بازی‌های زیر را انتخاب کنید 👇",
+        "🎮 <b>چالش های روزانه و دریافت تخفیف رایگان:</b>\n\n"
+        "هر روز می توانید شانس خود را امتحان کنید و به ازای امتیاز خود، <b>موجودی تخفیف رایگان</b> هدیه بگیرید که در خریدهایتان کسر می شود!\n\n"
+        "یکی از بازی های زیر را انتخاب کنید 👇",
         reply_markup=games_menu_kb()
     )
 
@@ -40,7 +40,7 @@ async def play_game(call: CallbackQuery, bot: Bot) -> None:
     last_col = "dice_last" if game_type == "dice" else "bowling_last"
 
     if user[last_col] == today:
-        await call.answer("⚠️ شما امروز این چالش را انجام داده‌اید! فردا دوباره تلاش کنید.", show_alert=True)
+        await call.answer("⚠️ شما امروز این چالش را انجام داده اید! فردا دوباره تلاش کنید.", show_alert=True)
         return
 
     await call.message.delete()
@@ -65,6 +65,6 @@ async def play_game(call: CallbackQuery, bot: Bot) -> None:
         text=(
             f"🎉 <b>آفرین! امتیاز شما: {score}</b>\n"
             f"🎁 جایزه: <b>{reward:,} تومان موجودی تخفیف</b> به حساب شما افزوده شد.\n"
-            "می‌توانید در خریدهای بعدی از این تخفیف استفاده نمایید."
+            "می توانید در خریدهای بعدی از این تخفیف استفاده نمایید."
         )
     )

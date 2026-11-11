@@ -5,13 +5,13 @@ from aiogram.types import ReplyKeyboardMarkup
 from bot.keyboards.common import kbtn, rkb, STYLE_SUCCESS, STYLE_PRIMARY, STYLE_DANGER
 
 # Kashida / tatweel labels matching the polished user aesthetic
-LBL_BUY_PRODUCT = "🛍 خـــریــد مـحـصـول 🛍"
-LBL_TOPUP       = "💳 افـزایـش مـوجـودی"
-LBL_ACCOUNT     = "👤 حـسـاب کـاربـری"
-LBL_REFERRAL    = "👥 زیـرمـجـمـوعه‌گـیـری"
-LBL_SUPPORT     = "🎧 پـشـتـیـبـانـی"
-LBL_TRACKING    = "🔎 پـیـگـیـری سـفـارش"
-LBL_TRUST       = "🛡 اعـتـمـاد بـه مـا"
+LBL_BUY_PRODUCT = "خرید محصول"
+LBL_TOPUP = "افزایش موجودی"
+LBL_ACCOUNT = "حساب کاربری"
+LBL_REFERRAL = "زیرمجموعه گیری"
+LBL_SUPPORT = "پشتیبانی"
+LBL_TRACKING = "پیگیری سفارش"
+LBL_TRUST = "اعتماد به ما"
 
 MAIN_BUTTONS = {
     LBL_BUY_PRODUCT,

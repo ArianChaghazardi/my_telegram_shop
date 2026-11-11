@@ -48,14 +48,14 @@ settings = Settings()
 # ---------------------------------------------------------------------------
 
 DEFAULT_PRICES: Dict[str, str] = {
-    "price_per_star": "4520",        # Toman per star
-    "stars_price_50": "226000",      # 50 Stars pack
-    "premium_3": "3650000",          # Premium 3 months (Toman)
-    "premium_6": "4870000",          # Premium 6 months (Toman)
-    "premium_12": "8820000",         # Premium 12 months (Toman)
+    "price_per_star": "4520", # Toman per star
+    "stars_price_50": "226000", # 50 Stars pack
+    "premium_3": "3650000", # Premium 3 months (Toman)
+    "premium_6": "4870000", # Premium 6 months (Toman)
+    "premium_12": "8820000", # Premium 12 months (Toman)
     "ton_wallet_activation": "36000",# 0.1 TON wallet activation
-    "ton_personal_price": "330000",  # Toman per 1 TON
-    "trx_price": "95000",            # Toman per 1 TRX
+    "ton_personal_price": "330000", # Toman per 1 TON
+    "trx_price": "95000", # Toman per 1 TRX
     "reaction_price_per_10": "4500", # Toman per 10 reactions
     "wallet_address": "UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     "wallet_memo": "100200",
@@ -63,17 +63,17 @@ DEFAULT_PRICES: Dict[str, str] = {
 
 # 11 Telegram Gifts specification with star value and default price in Toman
 GIFTS_CATALOG = [
-    {"key": "heart",    "name": "قلب 💗",     "stars": 15,  "price": 68000},
-    {"key": "bear",     "name": "تدی 🧸",     "stars": 15,  "price": 69000},
-    {"key": "giftbox",  "name": "کادو 🎁",    "stars": 25,  "price": 114000},
-    {"key": "rose",     "name": "گل رز 🌹",   "stars": 25,  "price": 114000},
-    {"key": "cake",     "name": "کیک 🎂",     "stars": 50,  "price": 229000},
-    {"key": "bouquet",  "name": "دسته گل 💐", "stars": 50,  "price": 229000},
-    {"key": "rocket",   "name": "سفینه 🚀",   "stars": 50,  "price": 229000},
-    {"key": "trophy",   "name": "جام 🏆",     "stars": 100, "price": 458000},
-    {"key": "ring",     "name": "حلقه 💍",    "stars": 100, "price": 458000},
-    {"key": "bottle",   "name": "بطری 🍾",    "stars": 50,  "price": 229000},
-    {"key": "diamond",  "name": "الماس 💎",   "stars": 100, "price": 458000},
+    {"key": "heart", "name": "قلب 💗", "stars": 15, "price": 68000},
+    {"key": "bear", "name": "تدی 🧸", "stars": 15, "price": 69000},
+    {"key": "giftbox", "name": "کادو 🎁", "stars": 25, "price": 114000},
+    {"key": "rose", "name": "گل رز 🌹", "stars": 25, "price": 114000},
+    {"key": "cake", "name": "کیک 🎂", "stars": 50, "price": 229000},
+    {"key": "bouquet", "name": "دسته گل 💐", "stars": 50, "price": 229000},
+    {"key": "rocket", "name": "سفینه 🚀", "stars": 50, "price": 229000},
+    {"key": "trophy", "name": "جام 🏆", "stars": 100, "price": 458000},
+    {"key": "ring", "name": "حلقه 💍", "stars": 100, "price": 458000},
+    {"key": "bottle", "name": "بطری 🍾", "stars": 50, "price": 229000},
+    {"key": "diamond", "name": "الماس 💎", "stars": 100, "price": 458000},
 ]
 
 GIFT_BY_KEY = {g["key"]: g for g in GIFTS_CATALOG}

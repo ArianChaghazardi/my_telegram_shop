@@ -31,12 +31,12 @@ router = Router(name="start")
 
 WELCOME_TEXT = (
     "سلام! به فروشگاه خودکار و فوری خدمات تلگرام خوش آمدید ⭐️\n\n"
-    "از طریق این ربات می‌توانید تمامی خدمات تلگرام را به صورت آنی دریافت کنید:\n"
+    "از طریق این ربات می توانید تمامی خدمات تلگرام را به صورت آنی دریافت کنید:\n"
     "⭐ <b>استارز تلگرام (Telegram Stars)</b>\n"
     "💎 <b>اشتراک پرمیوم تلگرام (Telegram Premium)</b>\n"
-    "🎁 <b>ارسال گیفت‌های تلگرام (Telegram Gifts)</b>\n"
+    "🎁 <b>ارسال گیفت های تلگرام (Telegram Gifts)</b>\n"
     "🪙 <b>خرید و انتقال ارز دیجیتال (TON & TRX)</b>\n"
-    "❤️ <b>ری‌اکشن و بوست کانال</b>\n\n"
+    "❤️ <b>ری اکشن و بوست کانال</b>\n\n"
     "برای شروع از منوی زیر استفاده کنید 👇"
 )
 
@@ -92,7 +92,7 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     is_joined = await check_user_membership(bot, user_id)
     if not is_joined:
         await message.answer(
-            "⚠️ برای استفاده از امکانات ربات، ابتدا باید در کانال‌های زیر عضو شوید:\n"
+            "⚠️ برای استفاده از امکانات ربات، ابتدا باید در کانال های زیر عضو شوید:\n"
             "پس از عضویت، دکمه «بررسی عضویت» را لمس کنید.",
             reply_markup=gate_keyboard()
         )
@@ -109,7 +109,7 @@ async def gate_check(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
         await call.message.delete()
         await call.message.answer(WELCOME_TEXT, reply_markup=main_reply_keyboard())
     else:
-        await call.answer("❌ هنوز در تمام کانال‌ها عضو نشده‌اید!", show_alert=True)
+        await call.answer("❌ هنوز در تمام کانال ها عضو نشده اید!", show_alert=True)
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +121,7 @@ async def menu_buy_products(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
         "🛍 <b>فهرست محصولات و خدمات تلگرام:</b>\n\n"
-        "لطفاً دسته‌بندی مورد نظر خود را انتخاب کنید 👇",
+        "لطفاً دسته بندی مورد نظر خود را انتخاب کنید 👇",
         reply_markup=products_menu_kb()
     )
 
@@ -130,18 +130,18 @@ async def menu_buy_products(message: Message, state: FSMContext) -> None:
 async def menu_support(message: Message) -> None:
     await message.answer(
         f"🎧 <b>واحد پشتیبانی و پاسخگویی:</b>\n\n"
-        "در صورت بروز هرگونه سوال یا مشکل در سفارش‌ها، با آیدی پشتیبانی در ارتباط باشید:\n"
+        "در صورت بروز هرگونه سوال یا مشکل در سفارش ها، با آیدی پشتیبانی در ارتباط باشید:\n"
         f"👤 پشتیبانی: {settings.SUPPORT_USERNAME}\n\n"
-        "⏰ ساعت پاسخگویی: همه‌روزه از ۹ صبح تا ۱۲ شب"
+        "⏰ ساعت پاسخگویی: همه روزه از ۹ صبح تا ۱۲ شب"
     )
 
 
 @router.message(F.text == LBL_TRUST)
 async def menu_trust(message: Message) -> None:
-    channels_text = "\n".join(f"📢 {ch}" for ch in settings.channel_list) or "کانال گزارش واریزی‌ها"
+    channels_text = "\n".join(f"📢 {ch}" for ch in settings.channel_list) or "کانال گزارش واریزی ها"
     await message.answer(
         "🛡 <b>اعتماد و شفافیت:</b>\n\n"
-        "کلیه پرداخت‌ها و رضایت مشتریان در کانال رسمی رضایت ثبت می‌شود:\n"
+        "کلیه پرداخت ها و رضایت مشتریان در کانال رسمی رضایت ثبت می شود:\n"
         f"{channels_text}\n\n"
         "✅ تحویل فوری و تضمین بازگشت وجه در صورت بروز مشکل"
     )
