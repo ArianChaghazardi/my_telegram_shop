@@ -10,6 +10,7 @@ from bot.core.database import db
 from bot.services.fulfillment import FulfillmentService
 from bot.services.payment_gateway import PaymentGatewayService
 from bot.keyboards import invoice_kb
+from bot.keyboards.reply import MAIN_BUTTONS
 
 log = logging.getLogger(__name__)
 router = Router(name="payment")
@@ -28,7 +29,6 @@ async def pay_from_wallet(call: CallbackQuery, bot: Bot) -> None:
     order_code = call.data.split(":")[2]
     user_id = call.from_user.id
 
-    # Execute atomic deduction & order update
     success, message, order = await db.atomic_pay_order_from_wallet(user_id, order_code)
 
     if not success:
@@ -44,12 +44,55 @@ async def pay_from_wallet(call: CallbackQuery, bot: Bot) -> None:
         "🚀 <i>سفارش شما به صف تحویل خودکار فرستاده شد...</i>"
     )
 
-    # Trigger automatic fulfillment immediately
     await FulfillmentService.deliver_order(bot, order_code)
 
 
 # ---------------------------------------------------------------------------
-# 2. Discount Code Application (Anti-Abuse & Single-Use)
+# 2. Use Discount Balance (موجودی تخفیف هدیه)
+# ---------------------------------------------------------------------------
+
+@router.callback_query(F.data.startswith("pay:use_discount:"))
+async def pay_use_discount_balance(call: CallbackQuery) -> None:
+    order_code = call.data.split(":")[2]
+    user_id = call.from_user.id
+
+    success, msg, new_price = await db.apply_discount_balance(user_id, order_code)
+    await call.answer(msg, show_alert=True)
+
+    if not success:
+        return
+
+    order = await db.get_order(order_code)
+    user = await db.get_user(user_id)
+    user_balance = user["balance"] if user else 0
+    discount_balance = user["discount_balance"] if user else 0
+
+    text = (
+        "🧾 <b>پیش فاکتور سفارش (با کسر تخفیف):</b>\n"
+        "────────────────────\n"
+        f"📦 محصول: <b>{order['title']}</b>\n"
+        f"👤 گیرنده: <code>{order['recipient']}</code>\n"
+        f"🔖 کد سفارش: <code>{order_code}</code>\n"
+        f"💵 مبلغ اولیه: <s>{order['gross_price']:,} تومان</s>\n"
+        f"🎁 تخفیف کسر شده: <b>{order['discount_used']:,} تومان</b>\n"
+        f"💰 مبلغ نهایی قابل پرداخت: <b>{new_price:,} تومان</b>\n"
+        f"👛 موجودی کیف پول: <b>{user_balance:,} تومان</b>\n"
+        "────────────────────"
+    )
+
+    markup = invoice_kb(
+        order_code=order_code,
+        user_balance=user_balance,
+        final_price=new_price,
+        user_discount_balance=discount_balance,
+        has_discount_code=bool(order["discount_code"]),
+        has_discount_balance_used=True
+    )
+    await call.message.edit_text(text, reply_markup=markup)
+
+
+# ---------------------------------------------------------------------------
+# 3. Discount Code Application
 # ---------------------------------------------------------------------------
 
 @router.callback_query(F.data.startswith("pay:discount:"))
@@ -61,12 +104,17 @@ async def prompt_discount_code(call: CallbackQuery, state: FSMContext) -> None:
     await call.message.answer(
         "🎟 <b>اعمال کد تخفیف:</b>\n\n"
         "لطفاً کد تخفیف خود را ارسال کنید:\n"
-        "📌 مثال: <code>WelcomeCode</code>"
+        "📌 مثال: <code>WelcomeCode</code>\n\n"
+        "یا دکمه /cancel را برای انصراف ارسال فرمایید."
     )
 
 
 @router.message(DiscountFlow.waiting_for_code, F.text)
 async def process_discount_code(message: Message, state: FSMContext) -> None:
+    if message.text.strip() in MAIN_BUTTONS or message.text.strip() in ("❌ انصراف و بازگشت به منو", "/cancel", "انصراف"):
+        await state.clear()
+        return
+
     data = await state.get_data()
     order_code = data.get("discount_order_code")
     await state.clear()
@@ -89,6 +137,7 @@ async def process_discount_code(message: Message, state: FSMContext) -> None:
     order = await db.get_order(order_code)
     user = await db.get_user(message.from_user.id)
     user_balance = user["balance"] if user else 0
+    discount_balance = user["discount_balance"] if user else 0
 
     await message.answer(
         f"{result_msg}\n\n"
@@ -101,12 +150,19 @@ async def process_discount_code(message: Message, state: FSMContext) -> None:
         f"💵 مبلغ قابل پرداخت جدید: <b>{new_price:,} تومان</b>\n"
         f"👛 موجودی کیف پول: <b>{user_balance:,} تومان</b>\n"
         "────────────────────",
-        reply_markup=invoice_kb(order_code, user_balance, new_price, has_discount_code=True)
+        reply_markup=invoice_kb(
+            order_code=order_code,
+            user_balance=user_balance,
+            final_price=new_price,
+            user_discount_balance=discount_balance,
+            has_discount_code=True,
+            has_discount_balance_used=(order["discount_used"] > 0)
+        )
     )
 
 
 # ---------------------------------------------------------------------------
-# 3. Online Rial Payment Gateway
+# 4. Online Rial Payment Gateway
 # ---------------------------------------------------------------------------
 
 @router.callback_query(F.data.startswith("pay:online:"))
@@ -126,7 +182,7 @@ async def pay_online(call: CallbackQuery) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 4. Order Cancellation
+# 5. Order Cancellation
 # ---------------------------------------------------------------------------
 
 @router.callback_query(F.data.startswith("order:cancel"))

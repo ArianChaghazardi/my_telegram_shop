@@ -9,7 +9,7 @@ from aiogram.fsm.state import State, StatesGroup
 from bot.core.database import db
 from config import settings
 from bot.keyboards import btn, ikb, STYLE_SUCCESS, STYLE_PRIMARY, STYLE_DANGER
-from bot.keyboards.reply import LBL_ACCOUNT, LBL_REFERRAL, LBL_TRACKING
+from bot.keyboards.reply import LBL_ACCOUNT, LBL_REFERRAL, LBL_TRACKING, MAIN_BUTTONS
 
 log = logging.getLogger(__name__)
 router = Router(name="account")
@@ -51,11 +51,30 @@ async def menu_account(message: Message) -> None:
         f"{orders_text}"
     )
 
-    markup = ikb([
+    rows = [
         [btn("🎲 چالش های روزانه و جوایز", callback_data="games:menu", style=STYLE_SUCCESS)],
         [btn("🔎 پیگیری سفارش با کد", callback_data="track:start", style=STYLE_PRIMARY)],
-    ])
-    await message.answer(text, reply_markup=markup)
+    ]
+
+    # Loyalty points redemption
+    if user["points"] >= 30:
+        rows.append([btn(f"🎟 تبدیل ۳۰ امتیاز به کد تخفیف ۱۰٪", callback_data="pts:redeem", style=STYLE_SUCCESS)])
+
+    await message.answer(text, reply_markup=ikb(rows))
+
+
+@router.callback_query(F.data == "pts:redeem")
+async def redeem_points_callback(call: CallbackQuery) -> None:
+    ok, msg, code = await db.redeem_points_for_discount(call.from_user.id)
+    if not ok:
+        await call.answer(msg, show_alert=True)
+        return
+
+    await call.answer("کد تخفیف ساخته شد!", show_alert=True)
+    await call.message.answer(
+        f"{msg}\n\n"
+        "می توانید در خریدهای بعدی این کد را در پیش فاکتور اعمال نمایید."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +139,10 @@ async def tracking_start(event: Message | CallbackQuery, state: FSMContext) -> N
 
 @router.message(TrackingFlow.waiting_for_code, F.text)
 async def tracking_check(message: Message, state: FSMContext) -> None:
+    if message.text.strip() in MAIN_BUTTONS or message.text.strip() in ("❌ انصراف و بازگشت به منو", "/cancel", "انصراف"):
+        await state.clear()
+        return
+
     code = message.text.strip().upper()
     await state.clear()
 

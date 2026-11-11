@@ -20,6 +20,20 @@ logging.basicConfig(
 log = logging.getLogger("main")
 
 
+async def order_expiry_worker() -> None:
+    """Periodically check and expire orders older than 15 minutes."""
+    while True:
+        try:
+            await asyncio.sleep(60)
+            cnt = await db.expire_old_orders()
+            if cnt > 0:
+                log.info("Expired %d stale pending orders", cnt)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            log.warning("Error in order_expiry_worker: %s", e)
+
+
 async def main() -> None:
     if not settings.BOT_TOKEN or settings.BOT_TOKEN.startswith("123456789:"):
         log.error("BOT_TOKEN is not configured! Please edit your .env file.")
@@ -48,7 +62,10 @@ async def main() -> None:
     # 5. Clear any old active webhook
     await bot.delete_webhook(drop_pending_updates=True)
 
-    # 6. Start Polling
+    # 6. Start Background Workers
+    expiry_task = asyncio.create_task(order_expiry_worker())
+
+    # 7. Start Polling
     me = await bot.get_me()
     log.info("Bot started successfully as @%s (ID: %s)", me.username, me.id)
     print(f"\n🚀 ربات با موفقیت روی اکانت @{me.username} روشن شد و آماده دریافت سفارش است!\n")
@@ -56,6 +73,7 @@ async def main() -> None:
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
+        expiry_task.cancel()
         await bot.session.close()
         log.info("Bot stopped.")
 

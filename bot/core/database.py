@@ -296,6 +296,13 @@ class Database:
                 await conn.rollback()
                 return False, "❌ موجودی کافی نیست یا تراکنش همزمان رخ داده است.", None
 
+            # Deduct discount_balance if used
+            if order["discount_used"] > 0:
+                await conn.execute(
+                    "UPDATE users SET discount_balance = MAX(0, discount_balance - ?) WHERE id = ?",
+                    (order["discount_used"], user_id)
+                )
+
             # 5. Mark order as paid
             await conn.execute(
                 "UPDATE orders SET status = 'paid', paid_from = 'wallet' WHERE id = ?",
@@ -490,6 +497,131 @@ class Database:
         except Exception as e:
             await conn.rollback()
             return False, f"خطا در رد سفارش: {e}"
+        finally:
+            await conn.close()
+
+    async def apply_discount_balance(self, user_id: int, order_code: str) -> tuple[bool, str, int]:
+        """Deducts discount from order final_price using user's discount_balance."""
+        conn = await self.get_connection()
+        try:
+            await conn.execute("BEGIN IMMEDIATE")
+            o_cur = await conn.execute("SELECT * FROM orders WHERE code = ?", (order_code,))
+            order = await o_cur.fetchone()
+            if not order:
+                await conn.rollback()
+                return False, "❌ سفارش یافت نشد.", 0
+            order = dict(order)
+
+            if order["status"] != "pending":
+                await conn.rollback()
+                return False, "❌ این سفارش دیگر معتبر نیست.", 0
+
+            if order["discount_used"] > 0:
+                await conn.rollback()
+                return False, "⚠️ موجودی تخفیف قبلاً روی این سفارش اعمال شده است.", order["final_price"]
+
+            u_cur = await conn.execute("SELECT discount_balance FROM users WHERE id = ?", (user_id,))
+            user = await u_cur.fetchone()
+            discount_bal = user["discount_balance"] if user else 0
+
+            if discount_bal <= 0:
+                await conn.rollback()
+                return False, "🎁 موجودی تخفیف شما صفر است.", order["final_price"]
+
+            to_use = min(order["final_price"], discount_bal)
+            new_final_price = order["final_price"] - to_use
+
+            await conn.execute(
+                "UPDATE orders SET final_price = ?, discount_used = ? WHERE id = ?",
+                (new_final_price, to_use, order["id"])
+            )
+            await conn.commit()
+            return True, f"🎁 مبلغ {to_use:,} تومان از موجودی تخفیف شما روی این سفارش کسر شد.", new_final_price
+        except Exception as e:
+            await conn.rollback()
+            log.exception("Error applying discount balance: %s", e)
+            return False, "خطا در اعمال موجودی تخفیف.", 0
+        finally:
+            await conn.close()
+
+    async def get_discount_codes(self) -> List[Dict[str, Any]]:
+        conn = await self.get_connection()
+        try:
+            cursor = await conn.execute("SELECT * FROM discount_codes ORDER BY active DESC, percent DESC")
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            await conn.close()
+
+    async def create_discount_code(self, code: str, percent: int, max_uses: int = -1) -> bool:
+        conn = await self.get_connection()
+        try:
+            await conn.execute(
+                """
+                INSERT INTO discount_codes (code, percent, active, max_uses, times_used)
+                VALUES (?, ?, 1, ?, 0)
+                ON CONFLICT(code) DO UPDATE SET percent = excluded.percent, active = 1, max_uses = excluded.max_uses
+                """,
+                (code.strip(), percent, max_uses)
+            )
+            await conn.commit()
+            return True
+        except Exception as e:
+            log.exception("Error creating discount code: %s", e)
+            return False
+        finally:
+            await conn.close()
+
+    async def delete_discount_code(self, code: str) -> bool:
+        conn = await self.get_connection()
+        try:
+            cursor = await conn.execute("DELETE FROM discount_codes WHERE code = ?", (code.strip(),))
+            await conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            await conn.close()
+
+    async def redeem_points_for_discount(self, user_id: int) -> tuple[bool, str, str]:
+        """Convert 30 loyalty points into a personal 10% discount code."""
+        conn = await self.get_connection()
+        try:
+            await conn.execute("BEGIN IMMEDIATE")
+            u_cur = await conn.execute("SELECT points FROM users WHERE id = ?", (user_id,))
+            user = await u_cur.fetchone()
+            if not user or user["points"] < 30:
+                await conn.rollback()
+                return False, "❌ برای دریافت کد تخفیف به حداقل ۳۰ امتیاز نیاز دارید.", ""
+
+            # Deduct 30 points
+            await conn.execute("UPDATE users SET points = points - 30 WHERE id = ? AND points >= 30", (user_id,))
+
+            # Generate unique personal code
+            chars = string.ascii_uppercase + string.digits
+            code = "GIFT" + "".join(random.choices(chars, k=5))
+
+            await conn.execute(
+                "INSERT INTO discount_codes (code, percent, active, max_uses, times_used) VALUES (?, 10, 1, 1, 0)",
+                (code,)
+            )
+            await conn.commit()
+            return True, f"🎉 ۳۰ امتیاز کسر شد و کد تخفیف ۱۰٪ اختصاصی شما ساخته شد:\n<code>{code}</code>", code
+        except Exception as e:
+            await conn.rollback()
+            return False, f"خطا در تبدیل امتیاز: {e}", ""
+        finally:
+            await conn.close()
+
+    async def expire_old_orders(self) -> int:
+        """Expire pending orders older than 15 minutes (900 seconds)."""
+        conn = await self.get_connection()
+        try:
+            now = int(time.time())
+            cursor = await conn.execute(
+                "UPDATE orders SET status = 'expired' WHERE status = 'pending' AND (? - created_at) > 900",
+                (now,)
+            )
+            await conn.commit()
+            return cursor.rowcount
         finally:
             await conn.close()
 

@@ -96,6 +96,11 @@ async def topup_send_hash_prompt(call: CallbackQuery, state: FSMContext) -> None
 
 @router.message(WalletFlow.crypto_hash, F.text)
 async def topup_crypto_hash_received(message: Message, state: FSMContext, bot: Bot) -> None:
+    from bot.keyboards.reply import MAIN_BUTTONS
+    if message.text.strip() in MAIN_BUTTONS or message.text.strip() in ("❌ انصراف و بازگشت به منو", "/cancel", "انصراف"):
+        await state.clear()
+        return
+
     tx_hash = message.text.strip()
     await state.clear()
 
