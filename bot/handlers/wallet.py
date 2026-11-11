@@ -49,7 +49,10 @@ async def show_wallet_overview(event: Message | CallbackQuery) -> None:
     )
 
     if isinstance(event, CallbackQuery):
-        await event.message.answer(text, reply_markup=wallet_menu_kb())
+        try:
+            await event.message.edit_text(text, reply_markup=wallet_menu_kb())
+        except Exception:
+            await event.message.answer(text, reply_markup=wallet_menu_kb())
         await event.answer()
     else:
         await event.answer(text, reply_markup=wallet_menu_kb())
@@ -89,8 +92,10 @@ async def topup_crypto(call: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "topup:send_hash")
 async def topup_send_hash_prompt(call: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(WalletFlow.crypto_hash)
+    await state.update_data(prompt_msg_id=call.message.message_id)
     await call.message.edit_text(
-        "✍️ لطفاً <b>هش تراکنش (TX Hash)</b> یا شناسه انتقال را ارسال کنید:"
+        "✍️ لطفاً <b>هش تراکنش (TX Hash)</b> یا شناسه انتقال را ارسال کنید:",
+        reply_markup=ikb([[btn("🔙 بازگشت به کیف پول", callback_data="topup:start", style=STYLE_DANGER)]])
     )
 
 
@@ -101,13 +106,34 @@ async def topup_crypto_hash_received(message: Message, state: FSMContext, bot: B
         await state.clear()
         return
 
+    data = await state.get_data()
+    prompt_id = data.get("prompt_msg_id")
     tx_hash = message.text.strip()
     await state.clear()
 
-    await message.answer(
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    success_text = (
         "✅ هش تراکنش با موفقیت ثبت شد و در صف تایید قرار گرفت.\n"
         "پس از تایید روی شبکه بلاکچین، موجودی به کیف پول شما افزوده خواهد شد."
     )
+    markup = ikb([[btn("🔙 بازگشت به کیف پول", callback_data="topup:start", style=STYLE_PRIMARY)]])
+
+    if prompt_id:
+        try:
+            await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=prompt_id,
+                text=success_text,
+                reply_markup=markup
+            )
+        except Exception:
+            await message.answer(success_text, reply_markup=markup)
+    else:
+        await message.answer(success_text, reply_markup=markup)
 
     # Notify Admins
     for admin_id in settings.admin_id_list:

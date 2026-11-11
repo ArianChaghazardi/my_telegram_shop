@@ -201,12 +201,13 @@ async def adm_setprice_prompt(call: CallbackQuery, state: FSMContext) -> None:
     label = dict(PRICE_KEYS).get(key, key)
     current_val = await db.get_setting(key, "")
 
-    await state.update_data(edit_setting_key=key, edit_setting_label=label)
+    await state.update_data(edit_setting_key=key, edit_setting_label=label, prompt_msg_id=call.message.message_id)
     await state.set_state(AdminFlow.setting_value)
     await call.message.edit_text(
         f"⚙️ <b>ویرایش «{label}»:</b>\n\n"
         f"مقدار فعلی: <code>{current_val}</code>\n\n"
-        "✍️ لطفاً مقدار جدید را ارسال فرمایید (یا /cancel برای انصراف):"
+        "✍️ لطفاً مقدار جدید را ارسال فرمایید:",
+        reply_markup=ikb([[btn("🔙 بازگشت به لیست قیمت ها", callback_data="adm:prices", style=STYLE_DANGER)]])
     )
 
 
@@ -222,17 +223,30 @@ async def adm_setprice_save(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     key = data.get("edit_setting_key")
     label = data.get("edit_setting_label", key)
+    prompt_id = data.get("prompt_msg_id")
     await state.clear()
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
 
     if not key:
         await message.answer("❌ خطا در بازیابی کلید تنظیمات.")
         return
 
     await db.set_setting(key, new_val)
-    await message.answer(
-        f"✅ مقدار «{label}» با موفقیت به <code>{new_val}</code> تغییر یافت.",
-        reply_markup=ikb([[btn("⚙️ بازگشت به لیست قیمت ها", callback_data="adm:prices", style=STYLE_SUCCESS)]])
-    )
+    resp_text = f"✅ مقدار «{label}» با موفقیت به <code>{new_val}</code> تغییر یافت."
+    markup = ikb([[btn("⚙️ بازگشت به لیست قیمت ها", callback_data="adm:prices", style=STYLE_SUCCESS)]])
+
+    if prompt_id:
+        try:
+            await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=resp_text, reply_markup=markup)
+            return
+        except Exception:
+            pass
+
+    await message.answer(resp_text, reply_markup=markup)
 
 
 # ---------------------------------------------------------------------------

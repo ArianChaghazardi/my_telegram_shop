@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Shops catalog, product selection, and order draft creation."""
+"""Shops catalog, product selection, and order draft creation with in-place edit navigation."""
 
 import logging
 from aiogram import Router, F
@@ -17,6 +17,10 @@ from bot.keyboards import (
     products_menu_kb,
     main_reply_keyboard,
     MAIN_BUTTONS,
+    btn,
+    ikb,
+    STYLE_DANGER,
+    STYLE_PRIMARY,
 )
 from bot.keyboards.shops import (
     gift_anonymous_kb,
@@ -92,7 +96,13 @@ async def stars_pack_pick(call: CallbackQuery, state: FSMContext) -> None:
     else:
         price = qty * rate
 
-    await state.update_data(kind="stars", qty=qty, price=price, title=f"خرید {qty} استارز تلگرام")
+    await state.update_data(
+        kind="stars",
+        qty=qty,
+        price=price,
+        title=f"خرید {qty} استارز تلگرام",
+        prompt_msg_id=call.message.message_id
+    )
     await state.set_state(ShopFlow.stars_recipient)
     await call.message.edit_text(
         f"⭐ سفارش: <b>{qty} استارز تلگرام</b>\n"
@@ -106,9 +116,11 @@ async def stars_pack_pick(call: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "stars:custom")
 async def stars_custom_prompt(call: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(ShopFlow.stars_custom_qty)
+    await state.update_data(prompt_msg_id=call.message.message_id)
     await call.message.edit_text(
         "✍️ <b>لطفاً تعداد استارز مورد نیاز خود را به عدد ارسال کنید:</b>\n"
-        "📌 حداقل: ۵۰ عدد | حداکثر: ۵,۰۰۰ عدد"
+        "📌 حداقل: ۵۰ عدد | حداکثر: ۵,۰۰۰ عدد",
+        reply_markup=ikb([[btn("🔙 بازگشت", callback_data="shop:stars", style=STYLE_DANGER)]])
     )
 
 
@@ -118,23 +130,66 @@ async def stars_custom_input(message: Message, state: FSMContext) -> None:
         await state.clear()
         return
 
+    data = await state.get_data()
+    prompt_id = data.get("prompt_msg_id")
+
     text = message.text.strip().replace(",", "")
     if not text.isdigit() or int(text) < 50:
-        await message.answer("❌ تعداد نامعتبر است! حداقل تعداد خرید ۵۰ استارز می باشد. دوباره ارسال کنید:")
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        fail_msg = "❌ تعداد نامعتبر است! حداقل تعداد خرید ۵۰ استارز می باشد. دوباره ارسال کنید:"
+        fail_kb = ikb([[btn("🔙 بازگشت", callback_data="shop:stars", style=STYLE_DANGER)]])
+        if prompt_id:
+            try:
+                await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=fail_msg, reply_markup=fail_kb)
+                return
+            except Exception:
+                pass
+        await message.answer(fail_msg, reply_markup=fail_kb)
         return
 
     qty = int(text)
     rate = int(float(await db.get_setting("price_per_star", "4520")))
     price = qty * rate
-    await state.update_data(kind="stars", qty=qty, price=price, title=f"خرید {qty} استارز تلگرام")
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    await state.update_data(
+        kind="stars",
+        qty=qty,
+        price=price,
+        title=f"خرید {qty} استارز تلگرام",
+        prompt_msg_id=prompt_id
+    )
     await state.set_state(ShopFlow.stars_recipient)
-    await message.answer(
+
+    prompt_text = (
         f"⭐ سفارش: <b>{qty} استارز تلگرام</b>\n"
         f"💵 مبلغ: <b>{price:,} تومان</b>\n\n"
         "👤 استارزها به چه حسابی ارسال شوند؟\n"
-        "یوزرنیم یا آیدی عددی گیرنده را ارسال کنید:",
-        reply_markup=recipient_kb(message.from_user.first_name, back_callback="shop:stars")
+        "می توانید دکمه «برای خودم» را بزنید یا آیدی عددی / یوزرنیم گیرنده را ارسال کنید:"
     )
+    markup = recipient_kb(message.from_user.first_name, back_callback="shop:stars")
+
+    if prompt_id:
+        try:
+            await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=prompt_id,
+                text=prompt_text,
+                reply_markup=markup
+            )
+            return
+        except Exception:
+            pass
+
+    sent = await message.answer(prompt_text, reply_markup=markup)
+    await state.update_data(prompt_msg_id=sent.message_id)
 
 
 @router.callback_query(F.data == "stars:calc_balance")
@@ -154,7 +209,13 @@ async def stars_calc_balance(call: CallbackQuery, state: FSMContext) -> None:
         return
 
     price = possible_stars * rate
-    await state.update_data(kind="stars", qty=possible_stars, price=price, title=f"خرید {possible_stars} استارز با موجودی")
+    await state.update_data(
+        kind="stars",
+        qty=possible_stars,
+        price=price,
+        title=f"خرید {possible_stars} استارز با موجودی",
+        prompt_msg_id=call.message.message_id
+    )
     await state.set_state(ShopFlow.stars_recipient)
     await call.message.edit_text(
         f"🧮 بر اساس موجودی شما ({balance:,} تومان)، می توانید <b>{possible_stars} استارز</b> خریداری کنید.\n"
@@ -165,7 +226,7 @@ async def stars_calc_balance(call: CallbackQuery, state: FSMContext) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Recipient Handling & Invoice Creation
+# Recipient Handling & Invoice Creation (In-Place Edit Everywhere)
 # ---------------------------------------------------------------------------
 
 @router.callback_query(F.data == "recipient:self")
@@ -173,8 +234,22 @@ async def recipient_self(call: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     username = call.from_user.username
     recipient = f"@{username}" if username else str(call.from_user.id)
+
+    # Gift orders have an optional comment step
+    if data.get("kind") == "gift":
+        data["recipient"] = recipient
+        data["prompt_msg_id"] = call.message.message_id
+        await state.set_data(data)
+        await state.set_state(ShopFlow.gift_comment)
+        await call.message.edit_text(
+            "💬 <b>آیا می خواهید متنی همراه گیفت ثبت شود؟</b>\n\n"
+            "می توانید متن دلخواه خود را تایپ و ارسال کنید (حداکثر ۱۲۸ کاراکتر) یا دکمه «بدون متن» را بزنید:",
+            reply_markup=gift_comment_kb()
+        )
+        return
+
     await state.clear()
-    await create_and_display_invoice(call.message, call.from_user.id, data, recipient)
+    await create_and_display_invoice(call, call.from_user.id, data, recipient)
 
 
 @router.message(ShopFlow.stars_recipient, F.text)
@@ -190,21 +265,46 @@ async def recipient_text_input(message: Message, state: FSMContext) -> None:
     await create_and_display_invoice(message, message.from_user.id, data, recipient)
 
 
-async def create_and_display_invoice(message_or_target: any, user_id: int, data: dict, recipient: str) -> None:
-    """Create draft order and present invoice with full zero-price protection."""
+async def create_and_display_invoice(
+    message_or_target: any,
+    user_id: int,
+    data: dict,
+    recipient: str,
+) -> None:
+    """Create draft order and present invoice with full zero-price protection and strictly in-place editing."""
     gross_price = data.get("price", 0)
     title = data.get("title", "")
     kind = data.get("kind", "")
     qty = data.get("qty", 1)
     extra = data.get("extra", "")
+    prompt_id = data.get("prompt_msg_id")
 
     # Zero-price and stale state guard
     if not data or gross_price <= 0 or not title or not kind:
         text_fail = "❌ اطلاعات سفارش منقضی شده است. لطفاً محصول مورد نظر را مجدداً از منو انتخاب فرمایید."
-        if isinstance(message_or_target, Message):
-            await message_or_target.answer(text_fail, reply_markup=products_menu_kb())
+        markup_fail = products_menu_kb()
+        if isinstance(message_or_target, CallbackQuery):
+            await message_or_target.answer()
+            await message_or_target.message.edit_text(text_fail, reply_markup=markup_fail)
+        elif isinstance(message_or_target, Message) and message_or_target.from_user and message_or_target.from_user.is_bot:
+            await message_or_target.edit_text(text_fail, reply_markup=markup_fail)
+        elif prompt_id and isinstance(message_or_target, Message):
+            try:
+                await message_or_target.delete()
+            except Exception:
+                pass
+            try:
+                await message_or_target.bot.edit_message_text(
+                    chat_id=message_or_target.chat.id,
+                    message_id=prompt_id,
+                    text=text_fail,
+                    reply_markup=markup_fail
+                )
+                return
+            except Exception:
+                await message_or_target.answer(text_fail, reply_markup=markup_fail)
         else:
-            await message_or_target.edit_text(text_fail, reply_markup=products_menu_kb())
+            await message_or_target.answer(text_fail, reply_markup=markup_fail)
         return
 
     order_code = await db.create_order(
@@ -252,10 +352,35 @@ async def create_and_display_invoice(message_or_target: any, user_id: int, data:
         has_discount_code=False,
         has_discount_balance_used=False
     )
-    if isinstance(message_or_target, Message):
-        await message_or_target.answer(text, reply_markup=markup)
+
+    if isinstance(message_or_target, CallbackQuery):
+        await message_or_target.answer()
+        await message_or_target.message.edit_text(text, reply_markup=markup)
+    elif isinstance(message_or_target, Message):
+        if message_or_target.from_user and message_or_target.from_user.is_bot:
+            await message_or_target.edit_text(text, reply_markup=markup)
+        else:
+            try:
+                await message_or_target.delete()
+            except Exception:
+                pass
+            if prompt_id:
+                try:
+                    await message_or_target.bot.edit_message_text(
+                        chat_id=message_or_target.chat.id,
+                        message_id=prompt_id,
+                        text=text,
+                        reply_markup=markup
+                    )
+                    return
+                except Exception as e:
+                    log.warning("Could not edit prompt message: %s", e)
+            await message_or_target.answer(text, reply_markup=markup)
     else:
-        await message_or_target.edit_text(text, reply_markup=markup)
+        try:
+            await message_or_target.edit_text(text, reply_markup=markup)
+        except Exception:
+            await message_or_target.answer(text, reply_markup=markup)
 
 
 # ---------------------------------------------------------------------------
@@ -285,7 +410,13 @@ async def premium_pick(call: CallbackQuery, state: FSMContext) -> None:
     months = int(call.data.split(":")[1])
     key = PREMIUM_PLANS[months]
     price = int(float(await db.get_setting(key, "3650000")))
-    await state.update_data(kind="premium", qty=months, price=price, title=f"تلگرام پرمیوم ({months} ماهه)")
+    await state.update_data(
+        kind="premium",
+        qty=months,
+        price=price,
+        title=f"تلگرام پرمیوم ({months} ماهه)",
+        prompt_msg_id=call.message.message_id
+    )
     await state.set_state(ShopFlow.premium_recipient)
     await call.message.edit_text(
         f"💎 سفارش: <b>تلگرام پرمیوم {months} ماهه</b>\n"
@@ -323,7 +454,8 @@ async def gift_pick(call: CallbackQuery, state: FSMContext) -> None:
         price=gift["price"],
         title=f"گیفت {gift['name']}",
         gift_key=gift_key,
-        extra=f"gift_key={gift_key}"
+        extra=f"gift_key={gift_key}",
+        prompt_msg_id=call.message.message_id
     )
     await state.set_state(ShopFlow.gift_anonymous)
     await call.message.edit_text(
@@ -339,6 +471,7 @@ async def gift_anon_pick(call: CallbackQuery, state: FSMContext) -> None:
     is_anon = call.data.split(":")[2] == "1"
     data = await state.get_data()
     data["is_anonymous"] = is_anon
+    data["prompt_msg_id"] = call.message.message_id
     await state.set_data(data)
     await state.set_state(ShopFlow.gift_recipient)
     await call.message.edit_text(
@@ -356,14 +489,31 @@ async def gift_recipient_input(message: Message, state: FSMContext) -> None:
 
     recipient = message.text.strip()
     data = await state.get_data()
+    prompt_id = data.get("prompt_msg_id")
     data["recipient"] = recipient
     await state.set_data(data)
     await state.set_state(ShopFlow.gift_comment)
-    await message.answer(
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    text_resp = (
         "💬 <b>آیا می خواهید متنی همراه گیفت ثبت شود؟</b>\n\n"
-        "می توانید متن دلخواه خود را تایپ و ارسال کنید (حداکثر ۱۲۸ کاراکتر) یا دکمه «بدون متن» را بزنید:",
-        reply_markup=gift_comment_kb()
+        "می توانید متن دلخواه خود را تایپ و ارسال کنید (حداکثر ۱۲۸ کاراکتر) یا دکمه «بدون متن» را بزنید:"
     )
+    markup = gift_comment_kb()
+
+    if prompt_id:
+        try:
+            await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=text_resp, reply_markup=markup)
+            return
+        except Exception:
+            pass
+
+    sent = await message.answer(text_resp, reply_markup=markup)
+    await state.update_data(prompt_msg_id=sent.message_id)
 
 
 @router.callback_query(F.data == "gift:comment:skip", ShopFlow.gift_comment)
@@ -371,7 +521,7 @@ async def gift_comment_skip(call: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     recipient = data.get("recipient", "")
     await state.clear()
-    await create_and_display_invoice(call.message, call.from_user.id, data, recipient)
+    await create_and_display_invoice(call, call.from_user.id, data, recipient)
 
 
 @router.message(ShopFlow.gift_comment, F.text)
@@ -413,12 +563,13 @@ async def crypto_buy_start(call: CallbackQuery, state: FSMContext) -> None:
     setting_key = "ton_personal_price" if curr == "TON" else "trx_price"
     rate = int(float(await db.get_setting(setting_key, "330000")))
 
-    await state.update_data(crypto_curr=curr, crypto_rate=rate)
+    await state.update_data(crypto_curr=curr, crypto_rate=rate, prompt_msg_id=call.message.message_id)
     await state.set_state(ShopFlow.crypto_amount)
     await call.message.edit_text(
         f"🪙 <b>خرید {curr}:</b>\n\n"
         f"💵 نرخ هر واحد: <b>{rate:,} تومان</b>\n"
-        f"✍️ لطفاً تعداد واحد {curr} مورد نیاز خود را به عدد ارسال کنید (حداقل ۱):"
+        f"✍️ لطفاً تعداد واحد {curr} مورد نیاز خود را به عدد ارسال کنید (حداقل ۱):",
+        reply_markup=ikb([[btn("🔙 بازگشت", callback_data="shop:crypto", style=STYLE_DANGER)]])
     )
 
 
@@ -428,27 +579,58 @@ async def crypto_amount_input(message: Message, state: FSMContext) -> None:
         await state.clear()
         return
 
+    data = await state.get_data()
+    prompt_id = data.get("prompt_msg_id")
+
     text = message.text.strip().replace(",", "")
     try:
         amount = float(text)
         if amount <= 0:
             raise ValueError()
     except ValueError:
-        await message.answer("❌ مقدار نامعتبر است! لطفاً یک عدد معتبر ارسال کنید:")
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        fail_text = "❌ مقدار نامعتبر است! لطفاً یک عدد معتبر ارسال کنید:"
+        fail_kb = ikb([[btn("🔙 بازگشت", callback_data="shop:crypto", style=STYLE_DANGER)]])
+        if prompt_id:
+            try:
+                await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=fail_text, reply_markup=fail_kb)
+                return
+            except Exception:
+                pass
+        await message.answer(fail_text, reply_markup=fail_kb)
         return
 
-    data = await state.get_data()
     curr = data.get("crypto_curr", "TON")
     rate = data.get("crypto_rate", 330000)
     price = int(amount * rate)
 
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
     await state.update_data(qty=amount, price=price, title=f"خرید {amount} واحد {curr}")
     await state.set_state(ShopFlow.crypto_address)
-    await message.answer(
+
+    prompt_text = (
         f"🪙 سفارش: <b>{amount} {curr}</b>\n"
         f"💵 مبلغ: <b>{price:,} تومان</b>\n\n"
         f"👛 لطفاً <b>آدرس کیف پول {curr}</b> مقصد را ارسال فرمایید:"
     )
+    markup = ikb([[btn("🔙 بازگشت", callback_data="shop:crypto", style=STYLE_DANGER)]])
+
+    if prompt_id:
+        try:
+            await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=prompt_text, reply_markup=markup)
+            return
+        except Exception:
+            pass
+
+    sent = await message.answer(prompt_text, reply_markup=markup)
+    await state.update_data(prompt_msg_id=sent.message_id)
 
 
 @router.message(ShopFlow.crypto_address, F.text)
@@ -473,10 +655,12 @@ async def crypto_address_input(message: Message, state: FSMContext) -> None:
 async def shop_reactions(call: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await state.set_state(ShopFlow.reaction_link)
+    await state.update_data(prompt_msg_id=call.message.message_id)
     await call.message.edit_text(
         "❤️ <b>خرید ری اکشن تلگرام (تلگرام استارز ری اکشن)</b>\n\n"
         "🔗 لطفاً لینک پست عمومی کانال را ارسال کنید:\n"
-        "📌 مثال: <code>https://t.me/channel/123</code>"
+        "📌 مثال: <code>https://t.me/channel/123</code>",
+        reply_markup=ikb([[btn("🔙 بازگشت", callback_data="shop:main", style=STYLE_DANGER)]])
     )
 
 
@@ -486,15 +670,46 @@ async def reaction_link_input(message: Message, state: FSMContext) -> None:
         await state.clear()
         return
 
+    data = await state.get_data()
+    prompt_id = data.get("prompt_msg_id")
     link = message.text.strip()
+
     if not link.startswith("https://t.me/"):
-        await message.answer("❌ لینک پست نامعتبر است! باید با https://t.me/ شروع شود.")
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        fail_msg = "❌ لینک پست نامعتبر است! باید با https://t.me/ شروع شود."
+        fail_kb = ikb([[btn("🔙 بازگشت", callback_data="shop:main", style=STYLE_DANGER)]])
+        if prompt_id:
+            try:
+                await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=fail_msg, reply_markup=fail_kb)
+                return
+            except Exception:
+                pass
+        await message.answer(fail_msg, reply_markup=fail_kb)
         return
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
     await state.update_data(post_link=link)
     await state.set_state(ShopFlow.reaction_qty)
-    await message.answer(
-        "🔢 لطفاً تعداد ری اکشن مورد نظر را وارد کنید (حداقل ۱۰ عدد):"
-    )
+
+    prompt_text = "🔢 لطفاً تعداد ری اکشن مورد نظر را وارد کنید (حداقل ۱۰ عدد):"
+    markup = ikb([[btn("🔙 بازگشت", callback_data="shop:reactions", style=STYLE_DANGER)]])
+
+    if prompt_id:
+        try:
+            await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=prompt_text, reply_markup=markup)
+            return
+        except Exception:
+            pass
+
+    sent = await message.answer(prompt_text, reply_markup=markup)
+    await state.update_data(prompt_msg_id=sent.message_id)
 
 
 @router.message(ShopFlow.reaction_qty, F.text)
@@ -503,24 +718,39 @@ async def reaction_qty_input(message: Message, state: FSMContext) -> None:
         await state.clear()
         return
 
+    data = await state.get_data()
+    prompt_id = data.get("prompt_msg_id")
+    link = data.get("post_link", "")
+
     text = (message.text or "").strip()
     if not text.isdigit() or int(text) < 10:
-        await message.answer("❌ حداقل سفارش ری اکشن ۱۰ عدد می باشد.")
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        fail_msg = "❌ حداقل سفارش ری اکشن ۱۰ عدد می باشد."
+        if prompt_id:
+            try:
+                await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=fail_msg)
+                return
+            except Exception:
+                pass
+        await message.answer(fail_msg)
         return
+
     qty = int(text)
     rate_10 = int(float(await db.get_setting("reaction_price_per_10", "4500")))
     price = int((qty / 10) * rate_10)
-    data = await state.get_data()
-    link = data.get("post_link", "")
-    await state.clear()
 
     data_payload = {
         "kind": "reaction",
         "qty": qty,
         "price": price,
         "title": f"❤️ ری اکشن تلگرام ({qty} عدد)",
-        "extra": f"link={link}"
+        "extra": f"link={link}",
+        "prompt_msg_id": prompt_id
     }
+    await state.clear()
     await create_and_display_invoice(message, message.from_user.id, data_payload, recipient=link)
 
 

@@ -9,7 +9,7 @@ from aiogram.fsm.state import State, StatesGroup
 from bot.core.database import db
 from bot.services.fulfillment import FulfillmentService
 from bot.services.payment_gateway import PaymentGatewayService
-from bot.keyboards import invoice_kb
+from bot.keyboards import invoice_kb, btn, ikb, STYLE_DANGER, STYLE_PRIMARY, STYLE_SUCCESS
 from bot.keyboards.reply import MAIN_BUTTONS
 
 log = logging.getLogger(__name__)
@@ -92,21 +92,58 @@ async def pay_use_discount_balance(call: CallbackQuery) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 3. Discount Code Application
+# 3. Discount Code Application (In-Place Edit)
 # ---------------------------------------------------------------------------
 
 @router.callback_query(F.data.startswith("pay:discount:"))
 async def prompt_discount_code(call: CallbackQuery, state: FSMContext) -> None:
     order_code = call.data.split(":")[2]
-    await state.update_data(discount_order_code=order_code)
+    await state.update_data(discount_order_code=order_code, prompt_msg_id=call.message.message_id)
     await state.set_state(DiscountFlow.waiting_for_code)
     await call.answer()
-    await call.message.answer(
-        "🎟 <b>اعمال کد تخفیف:</b>\n\n"
+    await call.message.edit_text(
+        f"🎟 <b>اعمال کد تخفیف:</b>\n\n"
+        f"برای سفارش: <code>{order_code}</code>\n"
         "لطفاً کد تخفیف خود را ارسال کنید:\n"
-        "📌 مثال: <code>WelcomeCode</code>\n\n"
-        "یا دکمه /cancel را برای انصراف ارسال فرمایید."
+        "📌 مثال: <code>WelcomeCode</code>",
+        reply_markup=ikb([[btn("🔙 بازگشت به پیش فاکتور", callback_data=f"inv:refresh:{order_code}", style=STYLE_DANGER)]])
     )
+
+
+@router.callback_query(F.data.startswith("inv:refresh:"))
+async def refresh_invoice_callback(call: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    order_code = call.data.split(":")[2]
+    order = await db.get_order(order_code)
+    if not order:
+        await call.answer("سفارش یافت نشد.", show_alert=True)
+        return
+
+    user = await db.get_user(call.from_user.id)
+    user_balance = user["balance"] if user else 0
+    discount_balance = user["discount_balance"] if user else 0
+
+    text = (
+        "🧾 <b>پیش فاکتور سفارش:</b>\n"
+        "────────────────────\n"
+        f"📦 محصول: <b>{order['title']}</b>\n"
+        f"👤 گیرنده: <code>{order['recipient']}</code>\n"
+        f"🔖 کد سفارش: <code>{order_code}</code>\n"
+        f"💵 مبلغ: <b>{order['final_price']:,} تومان</b>\n"
+        f"👛 موجودی کیف پول: <b>{user_balance:,} تومان</b>\n"
+        "────────────────────\n"
+        "⏳ <i>اعتبار پیش فاکتور: ۱۵ دقیقه</i>"
+    )
+
+    markup = invoice_kb(
+        order_code=order_code,
+        user_balance=user_balance,
+        final_price=order["final_price"],
+        user_discount_balance=discount_balance,
+        has_discount_code=bool(order["discount_code"]),
+        has_discount_balance_used=(order["discount_used"] > 0)
+    )
+    await call.message.edit_text(text, reply_markup=markup)
 
 
 @router.message(DiscountFlow.waiting_for_code, F.text)
@@ -117,7 +154,13 @@ async def process_discount_code(message: Message, state: FSMContext) -> None:
 
     data = await state.get_data()
     order_code = data.get("discount_order_code")
+    prompt_id = data.get("prompt_msg_id")
     await state.clear()
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
 
     if not order_code:
         await message.answer("❌ اطلاعات سفارش یافت نشد.")
@@ -130,16 +173,30 @@ async def process_discount_code(message: Message, state: FSMContext) -> None:
         code_str=code_str
     )
 
-    if not success:
-        await message.answer(result_msg)
-        return
-
     order = await db.get_order(order_code)
     user = await db.get_user(message.from_user.id)
     user_balance = user["balance"] if user else 0
     discount_balance = user["discount_balance"] if user else 0
 
-    await message.answer(
+    if not success:
+        fail_text = (
+            f"❌ <b>خطا در اعمال کد تخفیف:</b>\n{result_msg}\n\n"
+            f"سفارش: <code>{order_code}</code>"
+        )
+        fail_markup = ikb([
+            [btn("🔄 تلاش مجدد", callback_data=f"pay:discount:{order_code}", style=STYLE_PRIMARY)],
+            [btn("🔙 بازگشت به پیش فاکتور", callback_data=f"inv:refresh:{order_code}", style=STYLE_DANGER)],
+        ])
+        if prompt_id:
+            try:
+                await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=fail_text, reply_markup=fail_markup)
+                return
+            except Exception:
+                pass
+        await message.answer(fail_text, reply_markup=fail_markup)
+        return
+
+    text = (
         f"{result_msg}\n\n"
         "🧾 <b>پیش فاکتور با تخفیف به روزرسانی شد:</b>\n"
         "────────────────────\n"
@@ -149,16 +206,26 @@ async def process_discount_code(message: Message, state: FSMContext) -> None:
         f"🏷 کد اعمال شده: <code>{code_str}</code>\n"
         f"💵 مبلغ قابل پرداخت جدید: <b>{new_price:,} تومان</b>\n"
         f"👛 موجودی کیف پول: <b>{user_balance:,} تومان</b>\n"
-        "────────────────────",
-        reply_markup=invoice_kb(
-            order_code=order_code,
-            user_balance=user_balance,
-            final_price=new_price,
-            user_discount_balance=discount_balance,
-            has_discount_code=True,
-            has_discount_balance_used=(order["discount_used"] > 0)
-        )
+        "────────────────────"
     )
+
+    markup = invoice_kb(
+        order_code=order_code,
+        user_balance=user_balance,
+        final_price=new_price,
+        user_discount_balance=discount_balance,
+        has_discount_code=True,
+        has_discount_balance_used=(order["discount_used"] > 0)
+    )
+
+    if prompt_id:
+        try:
+            await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=text, reply_markup=markup)
+            return
+        except Exception:
+            pass
+
+    await message.answer(text, reply_markup=markup)
 
 
 # ---------------------------------------------------------------------------

@@ -20,16 +20,16 @@ class TrackingFlow(StatesGroup):
 
 
 # ---------------------------------------------------------------------------
-# Profile & Account
+# Profile & Account (In-Place Edit Support)
 # ---------------------------------------------------------------------------
 
-@router.message(F.text == LBL_ACCOUNT)
-async def menu_account(message: Message) -> None:
-    user = await db.get_user(message.from_user.id)
+async def display_account_profile(event: Message | CallbackQuery) -> None:
+    user_id = event.from_user.id
+    user = await db.get_user(user_id)
     if not user:
-        user = await db.get_or_create_user(message.from_user.id, message.from_user.full_name)
+        user = await db.get_or_create_user(user_id, event.from_user.full_name)
 
-    orders = await db.get_user_orders(message.from_user.id, limit=5)
+    orders = await db.get_user_orders(user_id, limit=5)
     orders_text = ""
     if orders:
         orders_text = "\n".join(
@@ -56,11 +56,29 @@ async def menu_account(message: Message) -> None:
         [btn("🔎 پیگیری سفارش با کد", callback_data="track:start", style=STYLE_PRIMARY)],
     ]
 
-    # Loyalty points redemption
     if user["points"] >= 30:
-        rows.append([btn(f"🎟 تبدیل ۳۰ امتیاز به کد تخفیف ۱۰٪", callback_data="pts:redeem", style=STYLE_SUCCESS)])
+        rows.append([btn("🎟 تبدیل ۳۰ امتیاز به کد تخفیف ۱۰٪", callback_data="pts:redeem", style=STYLE_SUCCESS)])
 
-    await message.answer(text, reply_markup=ikb(rows))
+    markup = ikb(rows)
+    if isinstance(event, CallbackQuery):
+        try:
+            await event.message.edit_text(text, reply_markup=markup)
+        except Exception:
+            await event.message.answer(text, reply_markup=markup)
+        await event.answer()
+    else:
+        await event.answer(text, reply_markup=markup)
+
+
+@router.message(F.text == LBL_ACCOUNT)
+async def menu_account(message: Message) -> None:
+    await display_account_profile(message)
+
+
+@router.callback_query(F.data == "acc:back")
+async def acc_back_callback(call: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await display_account_profile(call)
 
 
 @router.callback_query(F.data == "pts:redeem")
@@ -70,11 +88,8 @@ async def redeem_points_callback(call: CallbackQuery) -> None:
         await call.answer(msg, show_alert=True)
         return
 
-    await call.answer("کد تخفیف ساخته شد!", show_alert=True)
-    await call.message.answer(
-        f"{msg}\n\n"
-        "می توانید در خریدهای بعدی این کد را در پیش فاکتور اعمال نمایید."
-    )
+    await call.answer(f"{msg}\nمی توانید در خریدهای بعدی این کد را در پیش فاکتور اعمال نمایید.", show_alert=True)
+    await display_account_profile(call)
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +118,7 @@ async def menu_referral(message: Message, bot: Bot) -> None:
 
     markup = ikb([
         [btn("💸 درخواست تسویه حساب درآمد", callback_data="ref:withdraw", style=STYLE_SUCCESS)],
-        [btn("🔙 بازگشت", callback_data="menu:close", style=STYLE_DANGER)],
+        [btn("🔙 بستن", callback_data="menu:close", style=STYLE_DANGER)],
     ])
     await message.answer(text, reply_markup=markup)
 
@@ -131,7 +146,11 @@ async def tracking_start(event: Message | CallbackQuery, state: FSMContext) -> N
     await state.set_state(TrackingFlow.waiting_for_code)
     text = "🔎 <b>پیگیری وضعیت سفارش:</b>\n\nلطفاً کد رهگیری سفارش خود را ارسال فرمایید (مثال: <code>ORD-ABC123</code>):"
     if isinstance(event, CallbackQuery):
-        await event.message.answer(text)
+        prompt = await event.message.edit_text(
+            text,
+            reply_markup=ikb([[btn("🔙 بازگشت به حساب کاربری", callback_data="acc:back", style=STYLE_DANGER)]])
+        )
+        await state.update_data(prompt_msg_id=prompt.message_id)
         await event.answer()
     else:
         await event.answer(text)
@@ -144,11 +163,26 @@ async def tracking_check(message: Message, state: FSMContext) -> None:
         return
 
     code = message.text.strip().upper()
+    data = await state.get_data()
+    prompt_id = data.get("prompt_msg_id")
     await state.clear()
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
 
     order = await db.get_order(code)
     if not order:
-        await message.answer("❌ سفارشی با این کد رهگیری در سیستم یافت نشد.")
+        res_text = f"❌ سفارشی با کد رهگیری <code>{code}</code> یافت نشد."
+        markup = ikb([[btn("🔙 بازگشت به حساب کاربری", callback_data="acc:back", style=STYLE_DANGER)]])
+        if prompt_id:
+            try:
+                await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=res_text, reply_markup=markup)
+                return
+            except Exception:
+                pass
+        await message.answer(res_text, reply_markup=markup)
         return
 
     status_map = {
@@ -161,7 +195,7 @@ async def tracking_check(message: Message, state: FSMContext) -> None:
     }
     status_label = status_map.get(order["status"], order["status"])
 
-    await message.answer(
+    res_text = (
         "🧾 <b>جزئیات سفارش:</b>\n"
         "────────────────────\n"
         f"🔖 کد رهگیری: <code>{order['code']}</code>\n"
@@ -171,3 +205,13 @@ async def tracking_check(message: Message, state: FSMContext) -> None:
         f"📊 وضعیت فعلی: <b>{status_label}</b>\n"
         "────────────────────"
     )
+    markup = ikb([[btn("🔙 بازگشت به حساب کاربری", callback_data="acc:back", style=STYLE_PRIMARY)]])
+
+    if prompt_id:
+        try:
+            await message.bot.edit_message_text(chat_id=message.chat.id, message_id=prompt_id, text=res_text, reply_markup=markup)
+            return
+        except Exception:
+            pass
+
+    await message.answer(res_text, reply_markup=markup)
